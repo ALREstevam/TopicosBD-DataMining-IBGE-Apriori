@@ -1,0 +1,17 @@
+line_holder = ({
+    "varid": "",
+    "varname": "",
+    "initpos": 0,
+    "endpos": 0,
+    "intpartsize": 0,
+    "decpartsize": 0,
+    "type": "",
+
+    "dictText": "",
+    "dict": {},
+
+    "columnConfigs":{
+        "valid":True
+    }
+
+    })
