@@ -1,52 +1,30 @@
-import pandas as pd
+from datamining.AprioriProject.Apriori import Apriori
+from datamining.cleanformat.CleanData import DataCleaner
 from pprint import pprint
+import json
 
-df = pd.read_csv('input.csv', sep=',')
-#print(df.head())
-
-class Apriori():
-    def __init__(self, dataframe, jsonDescriptionPath, minsup, minconf, maxgroups):
-        self.df = dataframe
-        self.minsup = minsup
-        self.minconf = minconf
-        self.groups = maxgroups
-        self.rows = self.df.shape[0]
-        self.columns = self.df.shape[1]
-        self.results = []
-
-    def support(self, cols, values) -> float:
-        equals = 0
-        items = []
-        for line in self.df.iterrows():
-            items = []
-            for col in cols:
-                items.append(line[1][col])
-            if items == values:
-                equals += 1
-        return equals / self.rows
-
-    def confidence(self,columns, values, columnValueTouple) -> float:
-        return self.support(columns, values) / self.support([columnValueTouple[0]], [columnValueTouple[1]])
-
-    def allsame(self, items):
-        return all(x == items[0] for x in items)
+dc = DataCleaner('input.csv', sep=',', decimal='.')
+info = dc.generateStructuredTableInfo()
 
 
+with open('tableData.json', 'w') as jsonFile:
+    json.dump(info, jsonFile)
+
+df = dc.stripeTable()
+df.to_csv('cleaned.csv', index=False)
+
+apr = Apriori(df, info, 0.2, 0.2, 5)
+
+rules = apr.getAssociationRules()
+
+a = apr.confidenceAsToupleArray([('a', 1), ('b', 12), ('c', 22)])
+
+combs = apr.combine([('a',1), ('a',2), ('b',10), ('b',11), ('c', 20)], 3, True)
+
+print(apr.removeWrongRules(combs))
 
 
+print(a)
 
-
-a = Apriori(df, 0, 0, 0)
-print(a.support(['a', 'b', 'c'], [6, 14, 104]))
-print(a.confidence(['a','b'], [6, 14], ('c', 104)))
-
-
-
-
-
-
-
-
-
-
-
+for rule in rules:
+    print(rule)
