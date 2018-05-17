@@ -4,6 +4,7 @@ from datamining.util.AssociationRule import AssociationRule
 from datamining.util.RuleHandSize import RuleHandSize
 from itertools import combinations
 import itertools
+from datamining.util.ProgressBar import ProgressBar
 
 df = pd.read_csv('input.csv', sep=',')
 
@@ -19,23 +20,22 @@ class Apriori():
         self.results = []
 
     def confidence(self, tuparr) -> float:
-        try:
-            colValues = tuparr[1:]
-            colValue = tuparr[0]
+        colValues = tuparr[1:]
+        colValue = tuparr[0]
 
-            return self.support(colValues) / self.support(colValue)
-        except:
-            return 0
+        sup1 = self.support(colValues)
+        sup2 = self.support([colValue])
+        return sup1 / sup2
+
+
 
     def support(self, tupArr) -> float:
         equal = 0
         for line in self.df.iterrows():
             localEqual = 0
             for element in tupArr:
-                print(element)
                 templine = int(line[1][element[0]])
                 tempitem = int(element[1])
-
 
                 if templine == tempitem:
                     localEqual += 1
@@ -43,6 +43,7 @@ class Apriori():
                 equal += 1
 
         return equal / self.rows
+
 
     def permutate(self, arr, elements):
         return list(itertools.permutations(arr, elements))
@@ -54,7 +55,19 @@ class Apriori():
                 answer.append([item1, item2])
         return answer
 
-    def apriori2(self):
+    def combineItemsets2(self, itemsetComposed, itemsetSimple):
+        answer = []
+        for element in itemsetComposed:
+            for item in itemsetSimple:
+                lstelem = list(element)
+                lstelem.append(item)
+                answer.append(lstelem)
+        return answer
+
+    def apriori(self):
+        with open('rules.txt', 'w') as file:
+            file.write('')
+
         firstItemset = []
         firstItemset2 = []
         processBuffer = []
@@ -67,8 +80,6 @@ class Apriori():
         for element in firstItemset:
             support = self.support([element])
 
-            print(support)
-
             if support > self.minsup:
                 firstItemset2.append(element)
                 processBuffer.append(element)
@@ -77,73 +88,57 @@ class Apriori():
                 )
 
         for i in range(2, self.groups):
-            print('i = {}'.format(i))
-            combinations = self.combineItemsets(processBuffer, firstItemset2)
+            if i > 2:
+                combinations = self.combineItemsets2(processBuffer, firstItemset2)
+            else:
+                combinations = self.combineItemsets(processBuffer, firstItemset2)
             combinations = self.removeWrongRules(combinations)
-            print(combinations)
-
-            permutated = []
-            for item in combinations:
-                print(item)
-                permutated.append(self.permutate(item, i))
-
-            for item in permutated:
-                sup = self.support(item)
-                conf = self.confidence(item)
-
-
-
-
-
-
-
-
-
-        '''
-            if combs == []:
+            if combinations == []:
                 break
 
-            with open('out.txt', 'a') as file:
-                for element in combs:
-                    file.write('{}\n'.format(element))
+            processBuffer = []
 
 
-            for element in combs:
+            print('\n\nPROCESSING RULES WITH {} ELEMENTS.'.format(i))
+            pb = ProgressBar(len(combinations))
+            for element in combinations:
 
-                aconf = self.confidence(element[:-1], [element[-1]])
-                asup = self.support(element)
-                #print('CONF: {:.2f}, SUP: {:.2f} - ELEM {}'.format(aconf, asup, element))
+                pb += 1
 
-                if asup > self.minsup and aconf > self.minconf:
-                    #print('element: {} - s: {}, c: {}'.format(element, asup, aconf))
-                    buffers[writeBuffer].append(element)
-                    rules = []
+                sup = self.support(element)
+                conf = self.confidence(element)
 
-                    for temp in element[:-1]:
-                        rules.append(RuleHandSize(temp[0], temp[1]))
+                rules = []
+                for temp in element[:-1]:
+                    rules.append(RuleHandSize(temp[0], temp[1]))
 
+                if sup > self.minsup and conf > self.minconf:
+                    processBuffer.append(element)
 
                     self.results.append(
-                        AssociationRule(rules, RuleHandSize(element[-1][0], element[-1][1]),
-                                        asup, 0))
+                        AssociationRule(rules, RuleHandSize(element[-1][0], element[-1][1]),sup, conf))
 
 
-
-
-
-    '''
-
-
-
-
-
-
-
+        print('\n\n\n\n')
 
     def getAssociationRules(self):
-        #self.executeApriori()
-        self.apriori2()
+        print('{:^50s}'.format('EXECUTING APRIORI ALGORITHM'))
+        self.apriori()
+
+        print('WRITING RESULTS TO A FILE')
+        pb = ProgressBar(len(self.results))
+
+        with open('rules.txt', 'w') as file:
+            for rule in self.results:
+                file.write('{}\n'.format(rule))
+                pb+=1
+
+
+        print('\n\n\n')
+        print('RULES FOUND: {}'.format(len(self.results)))
+        print('DONE.')
         return self.results
+
 
     def combine(self, arrayToComb, maxCombs, maxOnly = False):
         groups = [c for i in range(maxCombs + 1) for c in combinations(arrayToComb, i)]

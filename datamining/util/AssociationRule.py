@@ -12,7 +12,7 @@ class AssociationRule:
         for rule in self.lhs:
             lhsrules.append('{}={}'.format(rule.column, rule.value))
         lhsrulesStr = ', '.join(lhsrules)
-        rsp = 'RULE : {{{}}} => {{{}={}}} [sup: {}, conf: {}]'.format(lhsrulesStr, self.rhs.column, self.rhs.value, self.support, self.confidence)
+        rsp = ' >>> {{{}}} => {{{}={}}} [sup: {:.2f}, conf: {:.2f}]'.format(lhsrulesStr, self.rhs.column, self.rhs.value, self.support, self.confidence)
         return rsp
 
 
