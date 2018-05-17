@@ -13,18 +13,24 @@ with open('tableData.json', 'w') as jsonFile:
 df = dc.stripeTable()
 df.to_csv('cleaned.csv', index=False)
 
-apr = Apriori(df, info, 0.2, 0.2, 5)
+print(df.head())
+apr = Apriori(df, info, 0.2, 0.2, 7)
+
+
+it1 = [('x', 1), ('y', 2), ('z', 3)]
+it2 = [(('a', 1),('a', 2)), (('b', 2), ('b', 2)), (('c', 3), ('c', 4))]
+
+#for item in apr.combineItemsets(it1, it2):
+#    print(apr.removeWrongRules(item))
+
+#c1 = apr.combine([1,2,3,4,5], 3, True)
+#c2 = apr.permutate([1,2,3,4,5], 3)
+
+#exit()
 
 rules = apr.getAssociationRules()
 
-a = apr.confidenceAsToupleArray([('a', 1), ('b', 12), ('c', 22)])
-
-combs = apr.combine([('a',1), ('a',2), ('b',10), ('b',11), ('c', 20)], 3, True)
-
-print(apr.removeWrongRules(combs))
-
-
-print(a)
-
+i = 0
 for rule in rules:
-    print(rule)
+    print('#{} {}'.format(i, rule))
+    i+=1

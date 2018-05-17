@@ -3,9 +3,9 @@ from pprint import pprint
 from datamining.util.AssociationRule import AssociationRule
 from datamining.util.RuleHandSize import RuleHandSize
 from itertools import combinations
+import itertools
 
 df = pd.read_csv('input.csv', sep=',')
-#print(df.head())
 
 class Apriori():
     def __init__(self, dataframe, descriptor, minsup, minconf, maxgroups):
@@ -18,76 +18,131 @@ class Apriori():
         self.tbDescriptor = descriptor
         self.results = []
 
-    def supportAsTouples(self, colValues):
-        columns = []
-        values = []
-        for column, value in colValues:
-            columns.append(column)
-            values.append(value)
-        return self.support(columns, values)
+    def confidence(self, tuparr) -> float:
+        try:
+            colValues = tuparr[1:]
+            colValue = tuparr[0]
 
-    def confidenceAsTouples(self, colValues, colValue):
-        columns = []
-        values = []
+            return self.support(colValues) / self.support(colValue)
+        except:
+            return 0
 
-        for column, value in colValues:
-            columns.append(column)
-            values.append(value)
-        return self.confidence(columns, values, colValue)
-
-    def confidenceAsToupleArray(self, toupleArray):
-        if len(toupleArray) < 3:
-            return None
-        endTp = toupleArray[-1]
-        toupleArray = toupleArray[:-1]
-        return self.confidenceAsTouples(toupleArray, endTp)
-
-
-    def support(self, cols, values) -> float:
-        equals = 0
-        items = []
+    def support(self, tupArr) -> float:
+        equal = 0
         for line in self.df.iterrows():
-            items = []
-            for col in cols:
-                items.append(line[1][col])
-            if items == values:
-                equals += 1
-        return equals / self.rows
+            localEqual = 0
+            for element in tupArr:
+                print(element)
+                templine = int(line[1][element[0]])
+                tempitem = int(element[1])
 
-    def confidence(self,columns, values, columnValueTouple) -> float:
-        support0 = self.support(columns, values)
-        support1 = self.support([columnValueTouple[0]], [columnValueTouple[1]]) == 0
-        if support1 == 0:
-            return 0.0
 
-        return support0/support1
-        #return self.support(columns, values) / self.support([columnValueTouple[0]], [columnValueTouple[1]])
+                if templine == tempitem:
+                    localEqual += 1
+            if localEqual == len(tupArr):
+                equal += 1
 
-    def allsame(self, items):
-        return all(x == items[0] for x in items)
+        return equal / self.rows
 
-    def executeApriori(self):
-        firstSubset = {}
+    def permutate(self, arr, elements):
+        return list(itertools.permutations(arr, elements))
 
-        for column in self.df:
-            firstSubset[column] = []
+    def combineItemsets(self, itemset1, itemset2):
+        answer = []
+        for item1 in itemset1:
+            for item2 in itemset2:
+                answer.append([item1, item2])
+        return answer
+
+    def apriori2(self):
+        firstItemset = []
+        firstItemset2 = []
+        processBuffer = []
+
 
         for column, elem in self.tbDescriptor.items():
-            for strp, value in elem['groups'].items():
-                support = self.support([column], [strp])
-                if support > self.minsup:
-                    firstSubset[column].append(strp)
-                    self.results.append(AssociationRule([RuleHandSize(column, strp)], RuleHandSize(column, strp), support, 0))
+            for delimiter, value in elem['groups'].items():
+                firstItemset.append((column, int(delimiter)))
 
-        print(firstSubset)
+        for element in firstItemset:
+            support = self.support([element])
+
+            print(support)
+
+            if support > self.minsup:
+                firstItemset2.append(element)
+                processBuffer.append(element)
+                self.results.append(
+                    AssociationRule([RuleHandSize(element[0], element[1])], RuleHandSize(element[0], element[1]), support, 0)
+                )
+
+        for i in range(2, self.groups):
+            print('i = {}'.format(i))
+            combinations = self.combineItemsets(processBuffer, firstItemset2)
+            combinations = self.removeWrongRules(combinations)
+            print(combinations)
+
+            permutated = []
+            for item in combinations:
+                print(item)
+                permutated.append(self.permutate(item, i))
+
+            for item in permutated:
+                sup = self.support(item)
+                conf = self.confidence(item)
 
 
 
-        for groups in range(2, self.groups + 1):
-            pass
+
+
+
+
+
+
+        '''
+            if combs == []:
+                break
+
+            with open('out.txt', 'a') as file:
+                for element in combs:
+                    file.write('{}\n'.format(element))
+
+
+            for element in combs:
+
+                aconf = self.confidence(element[:-1], [element[-1]])
+                asup = self.support(element)
+                #print('CONF: {:.2f}, SUP: {:.2f} - ELEM {}'.format(aconf, asup, element))
+
+                if asup > self.minsup and aconf > self.minconf:
+                    #print('element: {} - s: {}, c: {}'.format(element, asup, aconf))
+                    buffers[writeBuffer].append(element)
+                    rules = []
+
+                    for temp in element[:-1]:
+                        rules.append(RuleHandSize(temp[0], temp[1]))
+
+
+                    self.results.append(
+                        AssociationRule(rules, RuleHandSize(element[-1][0], element[-1][1]),
+                                        asup, 0))
+
+
+
+
+
+    '''
+
+
+
+
+
+
+
 
     def getAssociationRules(self):
-        self.executeApriori()
+        #self.executeApriori()
+        self.apriori2()
         return self.results
 
     def combine(self, arrayToComb, maxCombs, maxOnly = False):
@@ -105,27 +160,19 @@ class Apriori():
         else:
             return groups
 
-    def someEqual(self, arr):
-        for value1 in arr:
-            for value2 in arr:
-                if value1 == value2:
-                    return False
-        return True
-
-    def someEqualToupleArr(self, arr, pos):
-        for value1 in arr:
-            for value2 in arr:
-                print('{} == {}'.format(value1[pos], value2[pos]))
-                if value1[pos] == value2[pos]:
-                    return True
+    def toupleArrHasEqual(self, arr, pos):
+        values = []
+        for element in arr:
+            if element[pos] in values:
+                return True
+            values.append(element[pos])
         return False
 
 
     def removeWrongRules(self, combs):
         answ = []
         for item in combs:
-            if not self.someEqualToupleArr(item, 0):
-                print(item)
+            if not self.toupleArrHasEqual(item, 0):
                 answ.append(item)
         return answ
 
@@ -133,9 +180,5 @@ class Apriori():
 
 
 
-
-#a = Apriori(df, 0, 0, 0)
-#print(a.support(['a', 'b', 'c'], [6, 14, 104]))
-#print(a.confidence(['a','b'], [6, 14], ('c', 104)))
 
 
