@@ -1,7 +1,7 @@
 import pandas as pd
 import math
 import numpy as np
-from pprint import pprint
+import pprint
 import json
 from datamining.util.FileRenamer import FileRenamer as Fr
 import operator
@@ -12,9 +12,11 @@ class DataCleaner:
         self.jsonInfoFile = jsonInfoFile
         self.outputFileName = outputFileName
         self.df = pd.read_csv(inputFileName, sep=sep, decimal=decimal)
+        self.groupsAsTouples = {}
+        self.dataDivisionThresholdPercent = 0.1
 
 
-    def getNumberOfIntervals(self, columnName):
+    def nogetNumberOfIntervals(self, columnName):
         if np.issubdtype(self.df[columnName].dtype, np.number):
             stdDeviation = self.df[columnName].std()
             max = self.df[columnName].max()
@@ -28,29 +30,89 @@ class DataCleaner:
         else:
             return 0
 
-    def getIntervalLayout(self, columnName, lastMax):
-        intervalAmount = self.getNumberOfIntervals(columnName)
-        intervalList = {}
 
-        if intervalAmount != 0:
+    def nogetIntervalLayout(self, columnName, lastMax):
+        intervals = 9
+        intevalAnswer = []
+        if intervals != 0:
             lastMax = int(lastMax)
             beginCount = lastMax + (10 - (lastMax % 10))
 
             maxv = self.df[columnName].max()
             minv = self.df[columnName].min()
+            totalSum = self.df[columnName].sum()
             stdDeviation = self.df[columnName].std()
+            avg  = self.df[columnName].mean()
 
-            for i in range(intervalAmount):
-                intervalList[beginCount + i] = minv + (i+1) * stdDeviation
 
-            intervalList = {str(key): value for key, value in intervalList.items()}
-            return intervalList
+
+            i = 0
+            for i in range(intervals):
+                a = beginCount + i
+                b = minv + ((i+1) * (avg / (intervals/2)))
+                intevalAnswer.append((str(a), b))
+                i += 1
+
+            a = beginCount + i
+            b = maxv + 1
+            intevalAnswer.append((str(a), b))
+
+            #intervalList = {str(key): value for key, value in intervalList.items()}
+            text = str(pprint.pformat(intevalAnswer))
+            text = text.replace(',\n', '')
+            print(text)
+
+            self.groupsAsTouples[columnName] = intevalAnswer
+            return dict(intevalAnswer)
+        return None
+
+    def getIntervalLayout(self, columnName, lastMax):
+        intervals = 9
+        intevalAnswer = []
+        if intervals != 0:
+            lastMax = int(lastMax)
+            beginCount = lastMax + (10 - (lastMax % 10))
+
+            maxv = self.df[columnName].max()
+            minv = self.df[columnName].min()
+            totalSum = self.df[columnName].sum()
+            stdDeviation = self.df[columnName].std()
+            avg  = self.df[columnName].mean()
+
+            dfSorted = self.df[columnName].sort_values()
+
+
+            sum = 0
+            iterationCount = 0
+            threshold = self.dataDivisionThresholdPercent
+            for value in dfSorted:
+                if sum > (threshold * (iterationCount+1)):
+                    a = beginCount + iterationCount
+                    #b = minv + ((iterationCount + 1) * (avg / (intervals / 2)))
+                    b = value
+                    intevalAnswer.append((str(a), b))
+                else:
+                    sum += value
+                iterationCount += 1
+
+            a = beginCount + iterationCount
+            b = maxv + 1
+            intevalAnswer.append((str(a), b))
+
+            #intervalList = {str(key): value for key, value in intervalList.items()}
+            text = str(pprint.pformat(intevalAnswer))
+            text = text.replace(',\n', '')
+            print(text)
+
+            self.groupsAsTouples[columnName] = intevalAnswer
+            return dict(intevalAnswer)
         return None
 
 
     def generateStructuredTableInfo(self):
         answ = {}
         lastMax = -1
+
         for columnName in self.df:
             column = self.df[columnName]
             if np.issubdtype(column.dtype, np.number):
@@ -61,7 +123,13 @@ class DataCleaner:
                 minValue = float(column.min())
 
                 interval = self.getIntervalLayout(column.name, lastMax)
-                lastMax = max(list(interval.keys()))
+
+                tempLst = []
+                for item in self.groupsAsTouples[columnName]:
+                    tempLst.append(item[0])
+                lastMax = max(tempLst)
+                print('Max = {}'.format(lastMax))
+
                 temp = {"max": maxValue,"min": minValue,"mean": mean,"stddev": stdDeviation,"variance": variance,"groups": interval }
                 #pprint(temp)
                 answ[column.name] = temp
@@ -92,33 +160,39 @@ class DataCleaner:
             self.df.to_csv(Fr(self.inputFileName).appendNameAtEnd('_zscored'))
 
 
-    def stripeTable(self):
-        content = self.generateStructuredTableInfo()
+    def stripeTable(self, ):
+        #content = self.generateStructuredTableInfo()
         newData = {}
-        for row in self.df:
-            group = content[row]['groups']
 
+        print(self.groupsAsTouples)
+
+        for rowname in self.df:
             newColumn = []
-            for data in self.df[row]:
-                sortedGroup = sorted(group.items(), key=operator.itemgetter(1))
-                lastCount = 0
-                for name, minvalue in sortedGroup:
-                    if data < minvalue:
-                        newColumn.append(name)
+
+            print('Testing values from {}'.format(rowname))
+            for data in self.df[rowname]:
+                groupData = self.groupsAsTouples[rowname]
+                for item in groupData:
+                    groupLabel = item[0]
+                    groupMin = item[1]
+
+                    #print('{:.2f} < {:.2f} ?   :   '.format(data, groupMin), end='')
+                    if data < groupMin:
+                        newColumn.append(groupLabel)
+
+                        #print('True')
                         break
+                    #print('False')
 
-                    if lastCount == len(sortedGroup)-1:
-                        newColumn.append(sortedGroup[-1][0])
-                        break
+            newData[rowname] = newColumn
 
-                    lastCount += 1
-
-            newData[row] = newColumn
-            #print(newRow)
-            #print(len(newRow))
+        print(newData)
 
         df2 = pd.DataFrame(newData)
         #print(df2)
+
+
+        df2.to_csv('cleaned.csv')
         return df2
 
 

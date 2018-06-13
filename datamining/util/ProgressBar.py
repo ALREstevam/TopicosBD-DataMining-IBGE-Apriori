@@ -18,7 +18,9 @@ class ProgressBar(object):
         if level < self.start:  self._level = self.start
         if level > self.end:    self._level = self.end
 
-        self._ratio = float(self._level - self.start) / float(self.end - self.start)
+        value = float(self.end - self.start)
+        if(value == 0): value = 1
+        self._ratio = float(self._level - self.start) / value
         self._levelChars = int(self._ratio * self._barLength)
 
     def plotProgress(self):

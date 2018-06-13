@@ -19,34 +19,62 @@ class Apriori():
         self.tbDescriptor = descriptor
         self.results = []
 
+    #Confiança
     def confidence(self, tuparr) -> float:
-        colValues = tuparr[1:]
-        colValue = tuparr[0]
+        '''
+        Confiança (X->Y) = Número de registros contendo X e Y / Número de registros contendo X
 
-        sup1 = self.support(colValues)
-        sup2 = self.support([colValue])
-        return sup1 / sup2
+        :param tuparr:
+        :return:
+        '''
+        colValues = tuparr# y será o vetor da posição 1 até o fim
+        colValue = tuparr[0] #x será o valor do vetor na posição 0
 
+        #sup1 = float(self.support(colValues))
+        #sup2 = float(self.support(colValues))
 
+        sup1 = self.matchLines(colValues)
+        sup2 = self.matchLines([colValue])
+
+        result = (sup1 / sup2)
+        return result
 
     def support(self, tupArr) -> float:
-        equal = 0
-        for line in self.df.iterrows():
+        '''
+        Suporte (X->Y) = número de registros contendo X e Y / Total de registros
+        O método recebe um vetor com tuplas: [(nome_da_coluna, valor_a_testar), ...]
+
+        :param tupArr: vetor de tuplas no formato (nome_da_coluna, valor_a_testar)
+        :return: suporte dos itens enviados
+        '''
+        totalRegisters = self.rows  # total de registros
+        equal = self.matchLines(tupArr)
+
+        return equal / totalRegisters #número de registros contendo X e Y / Total de registros
+
+    def matchLines(self, tupArr):
+        '''
+        O método recebe um vetor com tuplas: [(nome_da_coluna, valor_a_testar), ...]
+        É feita a contagem das linhas no dataset que contenham os valores a testar nas colunas indicadas
+
+        :param tupArr: tupArr: vetor de tuplas no formato (nome_da_coluna, valor_a_testar)
+        :return: quantas linhas do dataset tem os valores de entrada
+        '''
+        equal = 0  # contador de linhas com todos os registros enviados
+        tableRows = self.df.iterrows()
+        for line in tableRows:  # para cada linha do dataframe
             localEqual = 0
-            for element in tupArr:
-                templine = int(line[1][element[0]])
-                tempitem = int(element[1])
+            for element in tupArr:  # para cada linha do vetor de tuplas
+                templine = int(line[1][element[0]])  # Acessando valor da linha em uma das colunas a testar
+                tempitem = int(element[1])  # acessando o valor submetido na tupla
+                if templine == tempitem:  # se o valor na tabela e na tupla forem os mesmos
+                    localEqual += 1  # existe uma igualdade local
+                else:  # Caso contrário o valor na coluna não é igual ao da tupla, posso passar para a próxima linha
+                    continue
+            if localEqual == len(tupArr):  # se para cada elemento do vetor enviado existir uma igualdade na linha
+                equal += 1  # a linha faz parte dos registros que contém X e y
+        return equal
 
-                if templine == tempitem:
-                    localEqual += 1
-            if localEqual == len(tupArr):
-                equal += 1
-
-        return equal / self.rows
-
-
-    def permutate(self, arr, elements):
-        return list(itertools.permutations(arr, elements))
 
     def combineItemsets(self, itemset1, itemset2):
         answer = []
@@ -83,9 +111,9 @@ class Apriori():
             if support > self.minsup:
                 firstItemset2.append(element)
                 processBuffer.append(element)
-                self.results.append(
-                    AssociationRule([RuleHandSize(element[0], element[1])], RuleHandSize(element[0], element[1]), support, 0)
-                )
+                #self.results.append(
+                #    AssociationRule([RuleHandSize(element[0], element[1])], RuleHandSize(element[0], element[1]), support, 0)
+                #)
 
         for i in range(2, self.groups):
             if i > 2:
@@ -133,27 +161,23 @@ class Apriori():
                 file.write('{}\n'.format(rule))
                 pb+=1
 
-
+        print('DONE.')
         print('\n\n\n')
         print('RULES FOUND: {}'.format(len(self.results)))
-        print('DONE.')
+
         return self.results
 
 
-    def combine(self, arrayToComb, maxCombs, maxOnly = False):
-        groups = [c for i in range(maxCombs + 1) for c in combinations(arrayToComb, i)]
-        answ = []
+    def getAssociationRulesWithMax(self, wantedRules):
+        sortedLst = self.getAssociationRulesSorted()
+        if wantedRules > len(sortedLst):
+            wantedRules = len(sortedLst)
+        return sortedLst[0: wantedRules]
 
-        if len(groups) > 1:
-            groups = groups[1:]
-
-        if maxOnly == True:
-            for element in groups:
-                if len(element) == maxCombs:
-                    answ.append(element)
-            return answ
-        else:
-            return groups
+    def getAssociationRulesSorted(self):
+        assocRules = self.getAssociationRules()
+        sortedLst = sorted(assocRules, key=lambda elem: elem.sum, reverse=True)
+        return sortedLst
 
     def toupleArrHasEqual(self, arr, pos):
         values = []
@@ -171,7 +195,8 @@ class Apriori():
                 answ.append(item)
         return answ
 
-
+    def getInfoText(self):
+        return 'minsup: [{}], minconf: [{}]'.format(self.minsup, self.minconf)
 
 
 
