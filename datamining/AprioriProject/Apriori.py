@@ -1,12 +1,10 @@
-import pandas as pd
-from pprint import pprint
-from datamining.util.AssociationRule import AssociationRule
-from datamining.util.RuleHandSize import RuleHandSize
-from itertools import combinations
-import itertools
-from datamining.util.ProgressBar import ProgressBar
+from datamining.AprioriProject.util.ProgressBar import ProgressBar
+from datamining.AprioriProject.util.RuleHandSize import RuleHandSize
 
-df = pd.read_csv('input.csv', sep=',')
+from datamining.AprioriProject.util.AssociationRule import AssociationRule
+
+
+#df = pd.read_csv('input.csv', sep=',')
 
 class Apriori():
     def __init__(self, dataframe, descriptor, minsup, minconf, maxgroups):
@@ -23,20 +21,23 @@ class Apriori():
     def confidence(self, tuparr) -> float:
         '''
         Confiança (X->Y) = Número de registros contendo X e Y / Número de registros contendo X
+        Confiança (X->Y) = Sup(x,y)/ Sup(x)
 
         :param tuparr:
         :return:
         '''
-        colValues = tuparr# y será o vetor da posição 1 até o fim
-        colValue = tuparr[0] #x será o valor do vetor na posição 0
+        items0 = tuparr
+        items1 = tuparr[:-1]
+        #sup1Num = self.support(allItems)
+        #sup2Den = self.support([ruleItem])
 
-        #sup1 = float(self.support(colValues))
-        #sup2 = float(self.support(colValues))
+        #result1 = sup1Num / sup2Den
 
-        sup1 = self.matchLines(colValues)
-        sup2 = self.matchLines([colValue])
+        sup1Num = self.matchLines(items0)
+        sup2Den = self.matchLines(items1)
 
-        result = (sup1 / sup2)
+        #print('\nCalclulating {}'.format(tuparr))
+        result = sup1Num / sup2Den
         return result
 
     def support(self, tupArr) -> float:
@@ -49,7 +50,6 @@ class Apriori():
         '''
         totalRegisters = self.rows  # total de registros
         equal = self.matchLines(tupArr)
-
         return equal / totalRegisters #número de registros contendo X e Y / Total de registros
 
     def matchLines(self, tupArr):
@@ -144,7 +144,8 @@ class Apriori():
                     processBuffer.append(element)
 
                     self.results.append(
-                        AssociationRule(rules, RuleHandSize(element[-1][0], element[-1][1]),sup, conf))
+                        AssociationRule(rules, RuleHandSize(element[-1][0], element[-1][1]),sup, conf)
+                    )
 
 
         print('\n\n\n\n')

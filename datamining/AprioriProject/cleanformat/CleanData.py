@@ -1,10 +1,12 @@
-import pandas as pd
-import math
-import numpy as np
-import pprint
 import json
-from datamining.util.FileRenamer import FileRenamer as Fr
-import operator
+import math
+import pprint
+
+import numpy as np
+import pandas as pd
+
+from datamining.AprioriProject.util.FileRenamer import FileRenamer as Fr
+
 
 class DataCleaner:
     def __init__(self, inputFileName = "in.csv",jsonInfoFile = 'info.json', outputFileName = "out.csv", sep = ';', decimal = ','):
@@ -13,7 +15,7 @@ class DataCleaner:
         self.outputFileName = outputFileName
         self.df = pd.read_csv(inputFileName, sep=sep, decimal=decimal)
         self.groupsAsTouples = {}
-        self.dataDivisionThresholdPercent = 0.1
+        self.dataDivisionThresholdPercent = 0.01
 
 
     def nogetNumberOfIntervals(self, columnName):
@@ -32,7 +34,7 @@ class DataCleaner:
 
 
     def nogetIntervalLayout(self, columnName, lastMax):
-        intervals = 9
+        intervals = 20
         intevalAnswer = []
         if intervals != 0:
             lastMax = int(lastMax)
@@ -43,8 +45,6 @@ class DataCleaner:
             totalSum = self.df[columnName].sum()
             stdDeviation = self.df[columnName].std()
             avg  = self.df[columnName].mean()
-
-
 
             i = 0
             for i in range(intervals):
@@ -67,46 +67,41 @@ class DataCleaner:
         return None
 
     def getIntervalLayout(self, columnName, lastMax):
-        intervals = 9
         intevalAnswer = []
-        if intervals != 0:
-            lastMax = int(lastMax)
-            beginCount = lastMax + (10 - (lastMax % 10))
+        lastMax = int(lastMax)
+        beginCount = lastMax + (10 - (lastMax % 10))
 
-            maxv = self.df[columnName].max()
-            minv = self.df[columnName].min()
-            totalSum = self.df[columnName].sum()
-            stdDeviation = self.df[columnName].std()
-            avg  = self.df[columnName].mean()
+        maxv = self.df[columnName].max()
+        minv = self.df[columnName].min()
+        #totalSum = self.df[columnName].sum()
+        stdDeviation = self.df[columnName].std()
+        mean = self.df[columnName].mean()
+        #dfSorted = self.df[columnName].sort_values()
 
-            dfSorted = self.df[columnName].sort_values()
+        coefVariacao = (stdDeviation / mean / 100)
 
+        intervals = math.floor(coefVariacao * 10) * 5
 
-            sum = 0
-            iterationCount = 0
-            threshold = self.dataDivisionThresholdPercent
-            for value in dfSorted:
-                if sum > (threshold * (iterationCount+1)):
-                    a = beginCount + iterationCount
-                    #b = minv + ((iterationCount + 1) * (avg / (intervals / 2)))
-                    b = value
-                    intevalAnswer.append((str(a), b))
-                else:
-                    sum += value
-                iterationCount += 1
-
-            a = beginCount + iterationCount
-            b = maxv + 1
+        if intervals <= 0:
+            intervals = 1
+        i = 0
+        for i in range(intervals):
+            a = beginCount + i
+            b = minv + ((i + 1) * (mean / (intervals / 2)))
             intevalAnswer.append((str(a), b))
+            i += 1
 
-            #intervalList = {str(key): value for key, value in intervalList.items()}
-            text = str(pprint.pformat(intevalAnswer))
-            text = text.replace(',\n', '')
-            print(text)
+        a = beginCount + i
+        b = maxv + 1
+        intevalAnswer.append((str(a), b))
 
-            self.groupsAsTouples[columnName] = intevalAnswer
-            return dict(intevalAnswer)
-        return None
+        text = str(pprint.pformat(intevalAnswer))
+        text = text.replace(',\n', '')
+        print(text)
+
+        self.groupsAsTouples[columnName] = intevalAnswer
+        return dict(intevalAnswer)
+
 
 
     def generateStructuredTableInfo(self):

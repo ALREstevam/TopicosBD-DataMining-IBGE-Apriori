@@ -1,12 +1,11 @@
-from datamining.AprioriProject.Apriori import Apriori
-from datamining.cleanformat.CleanData import DataCleaner
-from pprint import pprint
 import json
-import os
-import csv
-from datamining.util.MyTiming import MyTiming
+
+from datamining.AprioriProject.Apriori import Apriori
+from datamining.AprioriProject.cleanformat.CleanData import DataCleaner
+from datamining.AprioriProject.util.MyTiming import MyTiming
 
 csvFilePaht = "Base de Dados.csv"
+#csvFilePaht = "input.csv"
 t = MyTiming()
 
 
@@ -16,7 +15,7 @@ info = dc.generateStructuredTableInfo()
 
 
 with open('tableData.json', 'w') as jsonFile:
-    json.dump(info, jsonFile)
+    json.dump(info, jsonFile, indent=4, sort_keys=True)
 
 df = dc.stripeTable()
 df.to_csv('cleaned.csv', index=False)
@@ -31,15 +30,16 @@ t.resetTimer()
 t.start_counting()
 
 
-minsup = 0.5
-minconf = 0.5
+minsup = 0.95
+minconf = 0.95
 
 if input('Execute Apriori on cleaned data? with minsup={} and minconf={} (y/n)'.format(minsup, minconf)) == 'n':
     exit(0)
 
 apr = Apriori(df, info, minsup=minsup, minconf=minconf, maxgroups=5)
+#rules = apr.getAssociationRules()
+rules = apr.getAssociationRulesWithMax(8)
 
-rules = apr.getAssociationRulesWithMax(20)
 print(apr.getInfoText())
 
 i = 0
